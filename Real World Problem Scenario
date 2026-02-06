@@ -1,0 +1,151 @@
+Problem: 
+
+During a district wide online testing window, one school reports that students devices show as "connected", but testing platforms
+fail to load. 
+
+I approached this using the OSI model to avoid guesswork and reduce downtime. 
+
+Layer 1: Verified wireless access points and uplinks were operational.
+Layer 2: Confirmed devices were associating successfully. 
+Layer 3: Identified devices were placed in an incorrect VLAN with no routing access. 
+Layer 7: Ruled out application failure once routing was corrected. 
+
+Troubleshooting Approach (OSI-Based)
+Step 1: Verify Physical and Data Link Connectivity (Layers 1–2)
+Command
+show interface status
+
+Expected Output
+Port      Name               Status       Vlan       Duplex  Speed  Type
+Gi1/0/24                     connected    20         full    1000   10/100/1000BaseTX
+
+Explanation
+
+The port is physically up (connected)
+
+The device is assigned to VLAN 20
+
+Physical layer issues are ruled out
+
+The port was assigned to VLAN 20, which is not intended to provide access to instructional resources. 
+Given the device role and the timing of the issue, the VLAN assignment immediately became suspect.
+
+VLAN 20 is wrong, because VLANs are assigned based on function, not numbering. VLAN 20 did not have the
+routing or access policies required for instructional devices. 
+
+Step 2: Verify Interface Configuration (Layer 2)
+Command
+show running-config interface GigabitEthernet1/0/24
+
+Expected Output
+interface GigabitEthernet1/0/24
+ switchport mode access
+ switchport access vlan 20
+ spanning-tree portfast
+
+Explanation
+
+Port is configured correctly as an access port
+
+Device is statically assigned to VLAN 20
+
+VLAN 20 is an administrative VLAN and does not have routing access to instructional resources
+
+Root cause identified: incorrect VLAN assignment
+
+Corrective Action: VLAN Assignment Fix
+Configuration Change (No Output Expected)
+configure terminal
+interface GigabitEthernet1/0/24
+ switchport access vlan 10
+end
+
+
+Note: Configuration commands do not return output. Validation is performed using show commands.
+
+Step 3: Validate VLAN Membership (Layer 2)
+Command
+show vlan brief
+
+Expected Output
+VLAN Name              Status    Ports
+---- ----------------- --------- ----------------
+10   Instructional     active    Gi1/0/24
+20   Administrative    active
+30   Guest             active
+
+Explanation
+
+Port Gi1/0/24 is now correctly assigned to VLAN 10
+
+Layer 2 segmentation is restored
+
+VLAN correction is confirmed
+
+Step 4: Validate IP Addressing and Gateway Assignment (Layer 3)
+Client-Side Validation
+Command
+ipconfig /all
+
+Expected Output
+IPv4 Address. . . . . . . . . . . : 10.10.10.45
+Subnet Mask . . . . . . . . . . . : 255.255.255.0
+Default Gateway . . . . . . . . . : 10.10.10.1
+DHCP Server . . . . . . . . . . . : 10.10.10.5
+
+Explanation
+
+IP address matches VLAN 10 subnet
+
+Correct default gateway assigned
+
+DHCP is functioning as expected
+
+Device is correctly configured at Layer 3
+
+Step 5: Validate Gateway Reachability (Layer 3)
+Command
+ping 10.10.10.1
+
+Expected Output
+Reply from 10.10.10.1: bytes=32 time=2ms TTL=255
+Reply from 10.10.10.1: bytes=32 time=2ms TTL=255
+
+Packets: Sent = 4, Received = 4, Lost = 0 (0% loss)
+
+Explanation
+
+Default gateway is reachable
+
+Device can route traffic off the local VLAN
+
+Inter-VLAN routing is functional
+
+Optional End-to-End Validation
+Command
+tracert 8.8.8.8
+
+Expected Output
+1  <1 ms  <1 ms  <1 ms  10.10.10.1
+2   5 ms   4 ms   5 ms  172.16.1.1
+3  10 ms   9 ms  10 ms  8.8.8.8
+
+Explanation
+
+Traffic exits VLAN 10 via the gateway
+
+Upstream routing is functioning
+
+End-to-end connectivity confirmed
+
+Resolution Summary
+
+Technical Summary:
+The issue was caused by an incorrect VLAN assignment at the access port. After correcting the VLAN and validating Layer 2 and Layer 3 functionality, normal access to instructional resources was restored.
+
+Non-Technical Summary:
+Devices were connected to the network but placed in the wrong group. Once they were moved to the correct group, access was restored.
+
+Key Takeaway
+
+This issue was resolved by following a structured OSI-based troubleshooting approach, validating each layer before making targeted changes, and confirming expected behavior after the fix.
